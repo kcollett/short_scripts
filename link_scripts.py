@@ -13,6 +13,7 @@
 
 import os
 import sys
+from collections import defaultdict
 from enum import Enum
 from pathlib import PurePath
 from typing import Dict, List, Tuple
@@ -62,24 +63,20 @@ def listdir_sorted(path: str) -> List[str]:
     return files
 
 
-def get_stem_and_suffix(file: str) -> Tuple[str, str]:
-    return PurePath(file).stem, PurePath(file).suffix
+def get_stem_and_suffix(path: str) -> Tuple[str, str]:
+    return PurePath(path).stem, PurePath(path).suffix
 
 
 def get_scripts(files: List[str]) -> Dict[str, set]:
-    scripts: Dict[str, set] = {}
+    scripts = defaultdict(set)
 
     for f in files:
         stem, suffix = get_stem_and_suffix(f)
         if len(suffix) == 0:
             continue  # "dot" files are all stem no suffix
 
-        st = ScriptType(suffix)
-        if stem in scripts:
-            scripts[stem].add(st)
-        else:
-            scripts[stem] = {st}
-
+        scripts[stem].add(ScriptType(suffix))
+    
     return scripts
 
 
