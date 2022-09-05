@@ -84,12 +84,6 @@ def get_scripts(files: List[str]) -> Dict[str, set]:
 
 
 def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> int:
-    try:
-        os.makedirs(target_dir, mode=0o755, exist_ok=False)
-    except FileExistsError:
-        print(f"{program}: {dir}: file or directory already exists", file=sys.stderr)
-        return 1
-
     for entry in scripts.items():
         basename = entry[0]
         script_types = entry[1]
@@ -129,6 +123,12 @@ def main() -> int:
     files = listdir_sorted(source_dir)
     scripts = get_scripts(files)
     # print(scripts)
+
+    try:
+        os.makedirs(target_dir, mode=0o755, exist_ok=False)
+    except FileExistsError:
+        print(f"{program}: {target_dir}: file or directory already exists", file=sys.stderr)
+        return 1
 
     if status := build_target(source_dir, target_dir, scripts):
         return status
