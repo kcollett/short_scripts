@@ -13,7 +13,7 @@
 
 import os
 import sys
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from enum import Enum
 from pathlib import PurePath
 from typing import Dict, List, Tuple
@@ -35,6 +35,7 @@ def check_dir_exists(dir: str) -> int:
 
 class ScriptType(Enum):
     """Enumeration for script 'types' based on the filename extension."""
+
     PYTHON = ".py"
     RUBY = ".rb"
     PERL = ".pl"
@@ -63,20 +64,23 @@ def listdir_sorted(path: str) -> List[str]:
     return files
 
 
-def get_stem_and_suffix(path: str) -> Tuple[str, str]:
-    return PurePath(path).stem, PurePath(path).suffix
+FileComponents = namedtuple("FileComponents", ["stem", "suffix"])
+
+
+def makeFileComponents(path: str) -> FileComponents:
+    return FileComponents(PurePath(path).stem, PurePath(path).suffix)
 
 
 def get_scripts(files: List[str]) -> Dict[str, set]:
+    components = [makeFileComponents(f) for f in files]
+    # "dot" files are all stem no suffix
+    components = filter(lambda ss: len(ss.suffix) > 0, components)
+
     scripts = defaultdict(set)
 
-    for f in files:
-        stem, suffix = get_stem_and_suffix(f)
-        if len(suffix) == 0:
-            continue  # "dot" files are all stem no suffix
+    for fc in components:
+        scripts[fc.stem].add(ScriptType(fc.suffix))
 
-        scripts[stem].add(ScriptType(suffix))
-    
     return scripts
 
 
@@ -124,7 +128,10 @@ def main() -> int:
     try:
         os.makedirs(target_dir, mode=0o755, exist_ok=False)
     except FileExistsError:
-        print(f"{program}: {target_dir}: file or directory already exists", file=sys.stderr)
+        print(
+            f"{program}: {target_dir}: file or directory already exists",
+            file=sys.stderr,
+        )
         return 1
 
     if status := build_target(source_dir, target_dir, scripts):
