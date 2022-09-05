@@ -19,8 +19,6 @@ from enum import Enum
 from pathlib import PurePath
 from typing import Dict, List, Tuple
 
-# scripts: Dict[str,set] = {}
-
 program: str = ""
 
 
@@ -95,7 +93,7 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
             source_file_path = os.path.relpath(source_file_path, start=target_dir)
             target_file_path = os.path.join(target_dir, basename)
             if primary_link_established:
-                target_file_path = PurePath(target_file_path).with_suffix(suffix)
+                target_file_path = str(PurePath(target_file_path).with_suffix(suffix))
 
             print(f"{target_file_path} -> {source_file_path}")
             os.symlink(source_file_path, target_file_path)
@@ -138,7 +136,9 @@ def main() -> int:
     if status := build_target(source_dir, target_dir, scripts):
         return status
 
+    return 0
+
 
 if __name__ == "__main__":
     status = main()
-    os.sys.exit(status)
+    sys.exit(status)
