@@ -14,7 +14,7 @@
 import os
 import sys
 from enum import Enum
-from pathlib import PurePath, PurePosixPath
+from pathlib import PurePath
 from typing import Dict, List, Tuple
 
 # scripts: Dict[str,set] = {}
@@ -96,12 +96,12 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
 
         primary_link_established = False
         for st in script_types:
-            extension = st.value
+            suffix = st.value
 
-            source_file_path = f"{source_dir}/{basename}{extension}"
+            source_file_path = f"{source_dir}/{basename}{suffix}"
             target_file_path = f"{target_dir}/{basename}"
             if primary_link_established:
-                target_file_path += f"{extension}"
+                target_file_path += f"{suffix}"
 
             print(f"{target_file_path} -> {source_file_path}")
             primary_link_established = True
@@ -115,7 +115,7 @@ def main() -> int:
 
     if len(sys.argv) != 3:
         print(
-            f"{program}: usage: {program} <source directory> <target_directory>",
+            f"{program}: usage: {program} <source_directory> <target_directory>",
             file=sys.stderr,
         )
         return 1
