@@ -64,7 +64,7 @@ def makeFileComponents(path: str) -> FileComponents:
     return FileComponents(PurePath(path).stem, PurePath(path).suffix)
 
 
-def get_scripts(files: List[str]) -> Dict[str, set]:
+def find_scripts(files: List[str]) -> Dict[str, set]:
     components = [makeFileComponents(f) for f in files]
     # filter out "dot" files (which are all stem no suffix)
     components = [fc for fc in components if len(fc.suffix) > 0]
@@ -90,9 +90,13 @@ def build_symlink_list(
     symlinks: List[SymlinkArgs] = []
 
     for basename, script_types in scripts.items():
+        ordered_script_types = sorted(
+            list(script_types),
+            key=lambda script_type: script_type_preference_order[script_type]
+        )
 
         primary_link_found = False
-        for st in script_types:
+        for st in ordered_script_types:
             suffix = st.value
 
             source_file_path = os.path.join(source_dir, f"{basename}{suffix}")
@@ -142,8 +146,7 @@ def main() -> int:
         return 1
 
     files = sorted(os.listdir(source_dir))
-    scripts = get_scripts(files)
-
+    scripts = find_scripts(files)
     symlinks = build_symlink_list(source_dir, target_dir, scripts)
     # print(symlinks)
     make_symlinks(symlinks)
