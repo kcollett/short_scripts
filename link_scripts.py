@@ -57,12 +57,6 @@ script_type_preference_order = {
 }
 
 
-def listdir_sorted(path: str) -> List[str]:
-    files = os.listdir(path)
-    files.sort()
-    return files
-
-
 FileComponents = namedtuple("FileComponents", ["stem", "suffix"])
 
 
@@ -73,7 +67,7 @@ def makeFileComponents(path: str) -> FileComponents:
 def get_scripts(files: List[str]) -> Dict[str, set]:
     components = [makeFileComponents(f) for f in files]
     # filter out "dot" files (which are all stem no suffix)
-    components = filter(lambda fc: len(fc.suffix) > 0, components)
+    components = [fc for fc in components if len(fc.suffix) > 0]
 
     scripts = defaultdict(set)
 
@@ -83,24 +77,42 @@ def get_scripts(files: List[str]) -> Dict[str, set]:
     return scripts
 
 
-def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> int:
+SymlinkArgs = namedtuple("SymlinkArgs", ["source_path", "target_path"])
+
+
+def makeSymlinkArgs(source_path: str, target_path: str) -> SymlinkArgs:
+    return SymlinkArgs(source_path, target_path)
+
+
+def build_symlink_list(
+    source_dir: str, target_dir: str, scripts: Dict[str, set]
+) -> List[SymlinkArgs]:
+    symlinks: List[SymlinkArgs] = []
+
     for basename, script_types in scripts.items():
-        primary_link_established = False
+
+        primary_link_found = False
         for st in script_types:
             suffix = st.value
 
             source_file_path = os.path.join(source_dir, f"{basename}{suffix}")
             source_file_path = os.path.relpath(source_file_path, start=target_dir)
             target_file_path = os.path.join(target_dir, basename)
-            if primary_link_established:
+            if primary_link_found:
                 target_file_path = str(PurePath(target_file_path).with_suffix(suffix))
 
-            print(f"{target_file_path} -> {source_file_path}")
-            os.symlink(source_file_path, target_file_path)
+            symlinks.append(SymlinkArgs(source_file_path, target_file_path))
+            # print(f"{target_file_path} -> {source_file_path}")
 
-            primary_link_established = True
+            primary_link_found = True
 
-    return 0
+    return symlinks
+
+
+def make_symlinks(symlinks: List[SymlinkArgs]) -> None:
+    for symlink in symlinks:
+        print(f"{symlink.target_path:35} -> {symlink.source_path:35}")
+        os.symlink(symlink.source_path, symlink.target_path)
 
 
 def main() -> int:
@@ -129,12 +141,12 @@ def main() -> int:
         )
         return 1
 
-    files = listdir_sorted(source_dir)
+    files = sorted(os.listdir(source_dir))
     scripts = get_scripts(files)
-    # print(scripts)
 
-    if status := build_target(source_dir, target_dir, scripts):
-        return status
+    symlinks = build_symlink_list(source_dir, target_dir, scripts)
+    # print(symlinks)
+    make_symlinks(symlinks)
 
     return 0
 
