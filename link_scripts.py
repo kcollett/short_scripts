@@ -12,6 +12,7 @@
 #
 
 import os
+import os.path
 import sys
 from collections import defaultdict, namedtuple
 from enum import Enum
@@ -34,7 +35,7 @@ def check_dir_exists(dir: str) -> int:
 
 
 class ScriptType(Enum):
-    """Enumeration for script 'types' based on the filename extension."""
+    """Enumeration for script 'types' based on the filename suffix."""
 
     PYTHON = ".py"
     RUBY = ".rb"
@@ -74,7 +75,7 @@ def makeFileComponents(path: str) -> FileComponents:
 def get_scripts(files: List[str]) -> Dict[str, set]:
     components = [makeFileComponents(f) for f in files]
     # filter out "dot" files (which are all stem no suffix)
-    components = filter(lambda ss: len(ss.suffix) > 0, components)
+    components = filter(lambda fc: len(fc.suffix) > 0, components)
 
     scripts = defaultdict(set)
 
@@ -90,12 +91,14 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
         for st in script_types:
             suffix = st.value
 
-            source_file_path = f"{source_dir}/{basename}{suffix}"
-            target_file_path = f"{target_dir}/{basename}"
+            source_file_path = os.path.join(source_dir, f"{basename}{suffix}")
+            source_file_path = os.path.relpath(source_file_path, start=target_dir)
+            target_file_path = os.path.join(target_dir, basename)
             if primary_link_established:
-                target_file_path += f"{suffix}"
+                target_file_path = PurePath(target_file_path).with_suffix(suffix)
 
             print(f"{target_file_path} -> {source_file_path}")
+
             primary_link_established = True
 
     return 0
@@ -112,15 +115,11 @@ def main() -> int:
         )
         return 1
 
-    source_dir = sys.argv[1]
-    target_dir = sys.argv[2]
+    source_dir = os.path.abspath(sys.argv[1])
+    target_dir = os.path.abspath(sys.argv[2])
 
     if status := check_dir_exists(source_dir):
         return status
-
-    files = listdir_sorted(source_dir)
-    scripts = get_scripts(files)
-    # print(scripts)
 
     try:
         os.makedirs(target_dir, mode=0o755, exist_ok=False)
@@ -130,6 +129,10 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    files = listdir_sorted(source_dir)
+    scripts = get_scripts(files)
+    # print(scripts)
 
     if status := build_target(source_dir, target_dir, scripts):
         return status
