@@ -98,6 +98,7 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
                 target_file_path = PurePath(target_file_path).with_suffix(suffix)
 
             print(f"{target_file_path} -> {source_file_path}")
+            os.symlink(source_file_path, target_file_path)
 
             primary_link_established = True
 
