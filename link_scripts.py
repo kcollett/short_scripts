@@ -2,14 +2,19 @@
 #
 #  -*- mode: python; -*-
 #
-# script to set up basic shell environment in current directory
-# typically this should be the home directory (but can another for testing)
-# git must be in your path for this to work
+# Given a source directory containing various scripts (.sh, .pl, .py, etc.) and
+# a target directory, populate the target directory with symlinks to the scripts
+# in the source directory. In most cases, the symlinks are the same as the script
+# except that the extension is removed (e.g. foo -> ~/src/scripts/foo.pl). If
+# there are multiple files sharing a basename (e.g. foo.sh, foo.pl), the
+# unadorned link is created for the "highest" type and the remaining links
+# have the extension (e.g. foo -> ~/scripts/foo.pl, foo.sh -> ~/scripts/foo.sh).
 #
 
 import os
 import sys
-from enum import Enum, IntEnum
+from enum import Enum
+from pathlib import PurePath, PurePosixPath
 from typing import Dict, List, Tuple
 
 # scripts: Dict[str,set] = {}
@@ -28,14 +33,15 @@ def check_dir_exists(dir: str) -> int:
 
 
 class ScriptType(Enum):
-    PYTHON = "py"
-    RUBY = "rb"
-    PERL = "pl"
-    ZSH = "zsh"
-    BASH = "bash"
-    KSH = "ksh"
-    SH = "sh"
-    CSH = "csh"
+    """Enumeration for script 'types' based on the filename extension."""
+    PYTHON = ".py"
+    RUBY = ".rb"
+    PERL = ".pl"
+    ZSH = ".zsh"
+    BASH = ".bash"
+    KSH = ".ksh"
+    SH = ".sh"
+    CSH = ".csh"
 
 
 script_type_preference_order = {
@@ -55,23 +61,24 @@ def listdir_sorted(path: str) -> List[str]:
     files.sort()
     return files
 
-def get_basename_and_extension(file: str) -> Tuple[str, str]:
-    components = file.split(".")
-    return ".".join(components[:-1]), components[-1]
+
+def get_stem_and_suffix(file: str) -> Tuple[str, str]:
+    return PurePath(file).stem, PurePath(file).suffix
 
 
 def get_scripts(files: List[str]) -> Dict[str, set]:
     scripts: Dict[str, set] = {}
 
     for f in files:
-        basename, extension = get_basename_and_extension(f)
-        if len(basename) == 0:  # skip "dot" files
-            continue
-        st = ScriptType(extension)
-        if basename in scripts:
-            scripts[basename].add(st)
+        stem, suffix = get_stem_and_suffix(f)
+        if len(suffix) == 0:
+            continue  # "dot" files are all stem no suffix
+
+        st = ScriptType(suffix)
+        if stem in scripts:
+            scripts[stem].add(st)
         else:
-            scripts[basename] = {st}
+            scripts[stem] = {st}
 
     return scripts
 
@@ -86,26 +93,18 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
     for entry in scripts.items():
         basename = entry[0]
         script_types = entry[1]
-        # print(basename)
-        # print(extensions)
 
-        # if len(script_types) == 1:
-        #     # file that doesn't have multiple versions (e.g. foo.sh, foo.pl);
-        #     # leave extension out of symlink
-        #     extension = list(script_types)[0].value
-        #     source_file_path = f"{source_dir}/{basename}.{extension}"
-        #     target_file_path = f"{target_dir}/{basename}"
-        #     print(f"{target_file_path} -> {source_file_path}")
-        # else:
-        main_link_established = False
-        for script_type in script_types:
-            extension = script_type.value
-            source_file_path = f"{source_dir}/{basename}.{extension}"
+        primary_link_established = False
+        for st in script_types:
+            extension = st.value
+
+            source_file_path = f"{source_dir}/{basename}{extension}"
             target_file_path = f"{target_dir}/{basename}"
-            if main_link_established:
-                target_file_path += f".{extension}"
+            if primary_link_established:
+                target_file_path += f"{extension}"
+
             print(f"{target_file_path} -> {source_file_path}")
-            main_link_established = True
+            primary_link_established = True
 
     return 0
 
