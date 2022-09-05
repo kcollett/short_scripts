@@ -73,7 +73,7 @@ def makeFileComponents(path: str) -> FileComponents:
 
 def get_scripts(files: List[str]) -> Dict[str, set]:
     components = [makeFileComponents(f) for f in files]
-    # "dot" files are all stem no suffix
+    # filter out "dot" files (which are all stem no suffix)
     components = filter(lambda ss: len(ss.suffix) > 0, components)
 
     scripts = defaultdict(set)
@@ -85,10 +85,7 @@ def get_scripts(files: List[str]) -> Dict[str, set]:
 
 
 def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> int:
-    for entry in scripts.items():
-        basename = entry[0]
-        script_types = entry[1]
-
+    for basename, script_types in scripts.items():
         primary_link_established = False
         for st in script_types:
             suffix = st.value
