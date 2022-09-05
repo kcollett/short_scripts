@@ -10,7 +10,7 @@
 import os
 import sys
 from enum import Enum, IntEnum
-from typing import Dict
+from typing import Dict, List, Tuple
 
 # scripts: Dict[str,set] = {}
 
@@ -50,15 +50,24 @@ script_type_preference_order = {
 }
 
 
-def get_scripts(script_dir: str) -> Dict[str, set]:
+def listdir_sorted(path: str) -> List[str]:
+    files = os.listdir(path)
+    files.sort()
+    return files
+
+def get_basename_and_extension(file: str) -> Tuple[str, str]:
+    components = file.split(".")
+    return ".".join(components[:-1]), components[-1]
+
+
+def get_scripts(files: List[str]) -> Dict[str, set]:
     scripts: Dict[str, set] = {}
 
-    for f in os.listdir(script_dir):
-        # print(f)
-        components = f.split(".")
-        st = ScriptType(components[-1])
-        basename = ".".join(components[:-1])
-        # print(f"{basename}.{st}")
+    for f in files:
+        basename, extension = get_basename_and_extension(f)
+        if len(basename) == 0:  # skip "dot" files
+            continue
+        st = ScriptType(extension)
         if basename in scripts:
             scripts[basename].add(st)
         else:
@@ -80,7 +89,6 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
         # print(basename)
         # print(extensions)
 
-
         # if len(script_types) == 1:
         #     # file that doesn't have multiple versions (e.g. foo.sh, foo.pl);
         #     # leave extension out of symlink
@@ -89,15 +97,15 @@ def build_target(source_dir: str, target_dir: str, scripts: Dict[str, set]) -> i
         #     target_file_path = f"{target_dir}/{basename}"
         #     print(f"{target_file_path} -> {source_file_path}")
         # else:
-        base_link_established = False
+        main_link_established = False
         for script_type in script_types:
             extension = script_type.value
             source_file_path = f"{source_dir}/{basename}.{extension}"
             target_file_path = f"{target_dir}/{basename}"
-            if base_link_established:
+            if main_link_established:
                 target_file_path += f".{extension}"
             print(f"{target_file_path} -> {source_file_path}")
-            base_link_established = True
+            main_link_established = True
 
     return 0
 
@@ -119,10 +127,8 @@ def main() -> int:
     if status := check_dir_exists(source_dir):
         return status
 
-    # home_dir = os.environ["HOME"]
-    # source_dir = f"{home_dir}/src/script/sh"
-
-    scripts = get_scripts(source_dir)
+    files = listdir_sorted(source_dir)
+    scripts = get_scripts(files)
     # print(scripts)
 
     if status := build_target(source_dir, target_dir, scripts):
