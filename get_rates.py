@@ -112,9 +112,7 @@ def extract_rates_from_properties(properties: ET.Element) -> Rates:
     return Rates(date, r5y, r10y, r20y, r30y)
 
 
-def get_rates(rb: RootBuilter) -> Rates:
-    root = rb.getRoot()
-
+def get_rates(root: ET.Element) -> Rates:
     last_elt = get_last_entry(root)
     content = find_only_one_ending_with(last_elt, "content")
     properties = find_only_one_ending_with(content, "properties")
@@ -129,13 +127,24 @@ def main() -> None:
     nominal_url = f"{BASE_NOMINAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
     real_url = f"{BASE_REAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
 
-    # nominal_rates = get_rates(UrlRootBuilder(nominal_url))
-    # real_rates = get_rates(UrlRootBuilder(real_url))
+    # nominal_builder = UrlRootBuilder(nominal_url)
+    # real_builder = UrlRootBuilder(real_url)
+    nominal_builder = FileRootBuilder("/Users/karencollett/treasury_nominal.xml")
+    real_builder = FileRootBuilder("/Users/karencollett/treasury_real.xml")
 
-    nominal_rates = get_rates(
-        FileRootBuilder("/Users/karencollett/treasury_nominal.xml")
-    )
-    real_rates = get_rates(FileRootBuilder("/Users/karencollett/treasury_real.xml"))
+    nominal_root = nominal_builder.getRoot()
+    real_root = real_builder.getRoot()
+    nominal_rates = get_rates(nominal_root)
+    real_rates = get_rates(real_root)
+
+    ns = {
+        # xml:base="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
+        "d": "http://schemas.microsoft.com/ado/2007/08/dataservices",
+        "m": "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata",
+        #  xmlns="http://www.w3.org/2005/Atom"
+    }
+
+    # print nominal_root.find()
 
     print(nominal_rates)
     print(real_rates)
