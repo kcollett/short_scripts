@@ -4,7 +4,7 @@
 #
 import datetime
 import xml.etree.cElementTree as ET
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import requests
@@ -22,9 +22,9 @@ class Rates:
 
 
 class RootBuilter(ABC):
-    @abstractclassmethod
-    def getRoot() -> ET.Element:
-        pass
+    @abstractmethod
+    def getRoot(self) -> ET.Element:
+        raise NotImplementedError
 
 
 class UrlRootBuilder(RootBuilter):
@@ -51,6 +51,16 @@ class FileRootBuilder(RootBuilter):
         return root
 
 
+TREASURY_XML_NS: dict[str, str] = {
+    # "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
+    "d": "http://schemas.microsoft.com/ado/2007/08/dataservices",
+    "m": "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata",
+    #  xmlns="http://www.w3.org/2005/Atom",
+}
+TREASURY_XML_PREFIXES: set[str] = set(
+    {f"{{{value}}}" for value in TREASURY_XML_NS.values()}
+)
+
 TREASURY_RATE_XML_URL = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
 DATA_NAME = "data"
 NOMINAL_DATA_VALUE = "daily_treasury_yield_curve"
@@ -60,68 +70,46 @@ BASE_NOMINAL_XML_URL = f"{TREASURY_RATE_XML_URL}?{DATA_NAME}={NOMINAL_DATA_VALUE
 BASE_REAL_XML_URL = f"{TREASURY_RATE_XML_URL}?{DATA_NAME}={REAL_DATA_VALUE}"
 
 
-def find_all_ending_with(element: ET.Element, tag: str) -> list[ET.Element]:
-    return [child for child in element if child.tag.endswith(tag)]
+def get_last_properties(root: ET.Element) -> ET.Element:
+    """I could never get [last()] to work."""
+    last_properties: ET.Element
+    *_, last_properties = root.findall("*//m:properties", TREASURY_XML_NS)
+    return last_properties
 
 
-def find_only_one_ending_with(element: ET.Element, tag: str) -> ET.Element:
-    child_elts = find_all_ending_with(element, tag)
-    assert len(child_elts) == 1
-    return child_elts[0]
+def get_filtered_children_text(
+    element: ET.Element,
+    namespace_prefixes: set[str],
+    ignored_tags: set[str],
+) -> dict[str, str]:
+    filtered_elements: dict[str, str] = {}
+    for child in element.iter():
+        tag = child.tag
+        # remove any namespace prefixes
+        for prefix in namespace_prefixes:
+            tag = tag.removeprefix(prefix)
+
+        if tag not in ignored_tags:
+            filtered_elements[tag] = child.text if child.text is not None else ""
+
+    return filtered_elements
 
 
-def get_last_entry(root: ET.Element) -> ET.Element:
-    last_entry: ET.Element
-    entries = find_all_ending_with(root, "entry")
-    for elt in entries:
-        last_entry = elt
+def get_properties_values(root: ET.Element) -> dict[str, str]:
+    last_properties = get_last_properties(root)
 
-    # *_, last_tr = soup.find_all("tr")
-    return last_entry
+    return_value = get_filtered_children_text(
+        last_properties,
+        namespace_prefixes=TREASURY_XML_PREFIXES,
+        ignored_tags={"properties"},
+    )
 
-
-def extract_date_from_element(date_elt: ET.Element) -> datetime.date:
-    date_str = date_elt.text.strip()
-    dt = datetime.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
-    return dt.date()
-
-
-def extract_rate_from_element(rate_elt: ET.Element) -> float:
-    return float(rate_elt.text.strip()) / 100
-
-
-def extract_rates_from_properties(properties: ET.Element) -> Rates:
-    date: datetime.date = None
-    r5y: float = 0.0
-    r10y: float = 0.0
-    r20y: float = 0.0
-    r30y: float = 0.0
-
-    for child in properties:
-        if child.tag.endswith("DATE"):
-            date = extract_date_from_element(child)
-        elif child.tag.endswith("5YEAR"):
-            r5y = extract_rate_from_element(child)
-        elif child.tag.endswith("10YEAR"):
-            r10y = extract_rate_from_element(child)
-        elif child.tag.endswith("20YEAR"):
-            r20y = extract_rate_from_element(child)
-        elif child.tag.endswith("30YEAR"):
-            r30y = extract_rate_from_element(child)
-
-    return Rates(date, r5y, r10y, r20y, r30y)
-
-
-def get_rates(root: ET.Element) -> Rates:
-    last_elt = get_last_entry(root)
-    content = find_only_one_ending_with(last_elt, "content")
-    properties = find_only_one_ending_with(content, "properties")
-    return extract_rates_from_properties(properties)
+    return return_value
 
 
 def main() -> None:
     """Simple main()"""
-    # build URLS
+    # build URLs
     today = datetime.date.today()
     date_value_month = today.strftime("%Y%m")
     nominal_url = f"{BASE_NOMINAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
@@ -134,20 +122,14 @@ def main() -> None:
 
     nominal_root = nominal_builder.getRoot()
     real_root = real_builder.getRoot()
-    nominal_rates = get_rates(nominal_root)
-    real_rates = get_rates(real_root)
 
-    ns = {
-        # xml:base="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
-        "d": "http://schemas.microsoft.com/ado/2007/08/dataservices",
-        "m": "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata",
-        #  xmlns="http://www.w3.org/2005/Atom"
-    }
+    nominal_properties = get_properties_values(nominal_root)
+    real_properties = get_properties_values(real_root)
 
-    # print nominal_root.find()
-
-    print(nominal_rates)
-    print(real_rates)
+    for tag, text in nominal_properties.items():
+        print(f"{tag},{text}")
+    for tag, text in real_properties.items():
+        print(f"{tag},{text}")
 
 
 if __name__ == "__main__":
