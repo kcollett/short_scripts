@@ -21,13 +21,13 @@ class Rates:
     r30y: float
 
 
-class RootBuilter(ABC):
+class RootBuilder(ABC):
     @abstractmethod
     def getRoot(self) -> ET.Element:
         raise NotImplementedError
 
 
-class UrlRootBuilder(RootBuilter):
+class UrlRootBuilder(RootBuilder):
     url: str
 
     def __init__(self, url: str):
@@ -39,7 +39,7 @@ class UrlRootBuilder(RootBuilter):
         return root
 
 
-class FileRootBuilder(RootBuilter):
+class FileRootBuilder(RootBuilder):
     file: str
 
     def __init__(self, file: str):
@@ -106,6 +106,11 @@ def get_properties_values(root: ET.Element) -> dict[str, str]:
 
     return return_value
 
+def print_as_csv(properties: dict[str,str]) -> None:
+    print("NAME,VALUE")
+    for name, value in properties.items():
+        print(f"{name},{value}")
+
 
 def main() -> None:
     """Simple main()"""
@@ -115,10 +120,15 @@ def main() -> None:
     nominal_url = f"{BASE_NOMINAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
     real_url = f"{BASE_REAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
 
-    # nominal_builder = UrlRootBuilder(nominal_url)
-    # real_builder = UrlRootBuilder(real_url)
-    nominal_builder = FileRootBuilder("/Users/karencollett/treasury_nominal.xml")
-    real_builder = FileRootBuilder("/Users/karencollett/treasury_real.xml")
+    nominal_builder: RootBuilder
+    real_builder: RootBuilder
+    debug = False
+    if not debug:
+        nominal_builder = UrlRootBuilder(nominal_url)
+        real_builder = UrlRootBuilder(real_url)
+    else:
+        nominal_builder = FileRootBuilder("/Users/karencollett/treasury_nominal.xml")
+        real_builder = FileRootBuilder("/Users/karencollett/treasury_real.xml")
 
     nominal_root = nominal_builder.getRoot()
     real_root = real_builder.getRoot()
@@ -126,10 +136,8 @@ def main() -> None:
     nominal_properties = get_properties_values(nominal_root)
     real_properties = get_properties_values(real_root)
 
-    for tag, text in nominal_properties.items():
-        print(f"{tag},{text}")
-    for tag, text in real_properties.items():
-        print(f"{tag},{text}")
+    print_as_csv(nominal_properties)
+    print_as_csv(real_properties)
 
 
 if __name__ == "__main__":
