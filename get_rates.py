@@ -3,6 +3,7 @@
 #  -*- mode: python; -*-
 #
 import datetime
+import sys
 import xml.etree.cElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -33,6 +34,9 @@ class UrlRootBuilder(RootBuilder):
     def __init__(self, url: str):
         self.url = url
 
+    def __str__(self):
+        return self.url
+
     def getRoot(self) -> ET.Element:
         page = requests.get(self.url)
         root = ET.fromstring(page.content)
@@ -44,6 +48,9 @@ class FileRootBuilder(RootBuilder):
 
     def __init__(self, file: str):
         self.file = file
+
+    def __str__(self):
+        return self.file
 
     def getRoot(self) -> ET.Element:
         tree = ET.parse(self.file)
@@ -106,7 +113,8 @@ def get_properties_values(root: ET.Element) -> dict[str, str]:
 
     return return_value
 
-def print_as_csv(properties: dict[str,str]) -> None:
+
+def print_as_csv(properties: dict[str, str]) -> None:
     print("NAME,VALUE")
     for name, value in properties.items():
         print(f"{name},{value}")
@@ -114,22 +122,27 @@ def print_as_csv(properties: dict[str,str]) -> None:
 
 def main() -> None:
     """Simple main()"""
-    # build URLs
-    today = datetime.date.today()
-    date_value_month = today.strftime("%Y%m")
-    nominal_url = f"{BASE_NOMINAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
-    real_url = f"{BASE_REAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
-
     nominal_builder: RootBuilder
     real_builder: RootBuilder
     debug = False
     if not debug:
+        # build URLs
+        today = datetime.date.today()
+        date_value_month = today.strftime("%Y%m")
+
+        nominal_url = (
+            f"{BASE_NOMINAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
+        )
+        real_url = f"{BASE_REAL_XML_URL}&{DATE_VALUE_MONTH_NAME}={date_value_month}"
+
         nominal_builder = UrlRootBuilder(nominal_url)
         real_builder = UrlRootBuilder(real_url)
     else:
         nominal_builder = FileRootBuilder("/Users/karencollett/treasury_nominal.xml")
         real_builder = FileRootBuilder("/Users/karencollett/treasury_real.xml")
 
+    print(nominal_builder, file=sys.stderr)
+    print(real_builder, file=sys.stderr)
     nominal_root = nominal_builder.getRoot()
     real_root = real_builder.getRoot()
 
