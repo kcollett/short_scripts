@@ -2,14 +2,15 @@
 #
 #  -*- mode: python; -*-
 #
-# Given a source directory containing various scripts (.sh, .pl, .py, etc.) and
-# a target directory, populate the target directory with symlinks to the scripts
-# in the source directory. In most cases, the symlinks are the same as the script
-# except that the extension is removed (e.g. foo -> ~/src/scripts/foo.pl). If
-# there are multiple files sharing a basename (e.g. foo.sh, foo.pl), the
-# unadorned link is created for the "highest" type and the remaining links
-# have the extension (e.g. foo -> ~/scripts/foo.pl, foo.sh -> ~/scripts/foo.sh).
-#
+"""
+Given a source directory containing various scripts (.sh, .pl, .py, etc.) and
+a target directory, populate the target directory with symlinks to the scripts
+in the source directory. In most cases, the symlinks are the same as the script
+except that the extension is removed (e.g. foo -> ~/src/scripts/foo.pl). If
+there are multiple files sharing a basename (e.g. foo.sh, foo.pl), the
+unadorned link is created for the "highest" type and the remaining links
+have the extension (e.g. foo -> ~/scripts/foo.pl, foo.sh -> ~/scripts/foo.sh).
+"""
 
 import os
 import os.path
@@ -17,17 +18,23 @@ import sys
 from collections import defaultdict, namedtuple
 from enum import Enum
 from pathlib import PurePath
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 program: str = ""
 
 
-def check_dir_exists(dir: str) -> int:
-    if not os.path.exists(dir):
-        print(f"{program}: {dir}: directory does not exist", file=sys.stderr)
+def check_directory_exists(check_directory: str) -> int:
+    """
+    Check to see if a specified directory exists. If it does, 0 is returned;
+    otherwise, a message is written to stderr and 1 is returned.
+    """
+    if not os.path.exists(check_directory):
+        print(
+            f"{program}: {check_directory}: directory does not exist", file=sys.stderr
+        )
         return 1
-    if not os.path.isdir(dir):
-        print(f"{program}: {dir}: not a directory", file=sys.stderr)
+    if not os.path.isdir(check_directory):
+        print(f"{program}: {check_directory}: not a directory", file=sys.stderr)
         return 1
     return 0
 
@@ -43,6 +50,7 @@ class ScriptType(Enum):
     KSH = ".ksh"
     SH = ".sh"
     CSH = ".csh"
+    JS = ".js"
 
 
 script_type_preference_order = {
@@ -54,25 +62,33 @@ script_type_preference_order = {
     ScriptType.KSH: 6,
     ScriptType.SH: 7,
     ScriptType.CSH: 8,
+    ScriptType.JS: 9,
 }
 
 
 FileComponents = namedtuple("FileComponents", ["stem", "suffix"])
 
 
-def makeFileComponents(path: str) -> FileComponents:
-    return FileComponents(PurePath(path).stem, PurePath(path).suffix)
+# def zzmake_file_components(path: str) -> FileComponents:
+#     """
+#     Create a FileComponents for a given path.
+#     """
+#     return FileComponents(PurePath(path).stem, PurePath(path).suffix)
 
 
 def find_scripts(files: List[str]) -> Dict[str, set]:
-    components = [makeFileComponents(f) for f in files]
+    """
+    Given a list of script source files, build a Dict
+    mapping the stem of the to its one or more suffixes.
+    """
+    components = [FileComponents(PurePath(f).stem, PurePath(f).suffix) for f in files]
     # filter out "dot" files (which are all stem no suffix)
     components = [fc for fc in components if len(fc.suffix) > 0]
 
     scripts = defaultdict(set)
 
-    for fc in components:
-        scripts[fc.stem].add(ScriptType(fc.suffix))
+    for fc2 in components:
+        scripts[fc2.stem].add(ScriptType(fc2.suffix))
 
     return scripts
 
@@ -80,19 +96,25 @@ def find_scripts(files: List[str]) -> Dict[str, set]:
 SymlinkArgs = namedtuple("SymlinkArgs", ["source_path", "target_path"])
 
 
-def makeSymlinkArgs(source_path: str, target_path: str) -> SymlinkArgs:
-    return SymlinkArgs(source_path, target_path)
+# def makeSymlinkArgs(source_path: str, target_path: str) -> SymlinkArgs:
+#     return SymlinkArgs(source_path, target_path)
 
 
 def build_symlink_list(
     source_dir: str, target_dir: str, scripts: Dict[str, set]
 ) -> List[SymlinkArgs]:
+    """
+    Given source and target directories and a set of scripts,
+    return a list of symlinks where the link names have the extension removed.
+    In cases where there would be a collision, an unadorned link is created
+    for the preferred type, and the remaining links retain the file extension.
+    """
     symlinks: List[SymlinkArgs] = []
 
     for basename, script_types in scripts.items():
         ordered_script_types = sorted(
             list(script_types),
-            key=lambda script_type: script_type_preference_order[script_type]
+            key=lambda script_type: script_type_preference_order[script_type],
         )
 
         primary_link_found = False
@@ -114,14 +136,20 @@ def build_symlink_list(
 
 
 def make_symlinks(symlinks: List[SymlinkArgs]) -> None:
+    """
+    Given a list of SymLingArgs, create the corresponding symlinks.
+    """
     for symlink in symlinks:
         print(f"{symlink.target_path:35} -> {symlink.source_path:35}")
         os.symlink(symlink.source_path, symlink.target_path)
 
 
 def main() -> int:
+    """
+    Main for this script.
+    """
     global program
-    program = sys.argv[0].split("/")[-1]
+    program = sys.argv[0].rsplit("/", maxsplit=1)[-1]
 
     if len(sys.argv) != 3:
         print(
@@ -133,7 +161,7 @@ def main() -> int:
     source_dir = os.path.abspath(sys.argv[1])
     target_dir = os.path.abspath(sys.argv[2])
 
-    if status := check_dir_exists(source_dir):
+    if status := check_directory_exists(source_dir):
         return status
 
     try:
@@ -155,5 +183,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    status = main()
-    sys.exit(status)
+    sys.exit(main())
