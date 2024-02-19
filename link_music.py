@@ -27,12 +27,9 @@ def check_directory(directory_path: str) -> (bool, str):
         return False, f"{directory_path}: directory does not exist"
     if not os.path.isdir(directory_path):
         return False, f"{directory_path}: not a directory"
-    # TODO: support symlinks to directories?
+    # I'll cross the "support symlinks to directories" bridge when I get to it
 
     return True, ""
-
-
-program: str = ""  # set in main()
 
 
 # A bit convoluted so that I can define a docstring for the namedtuple.
@@ -109,11 +106,12 @@ def symlink_album(target_dir, artist, album: str) -> None:
     os.makedirs(album_link_subdir, mode=0o755, exist_ok=False)
 
     album_target_subdir = os.path.join(target_dir, album)
-    for target_track_file_name in list_entries(album_target_subdir):
-        target_track_path = os.path.join(album_target_subdir, target_track_file_name)
 
-        ti = extract_track_info(target_track_file_name)
+    for target_track_basename in list_entries(album_target_subdir):
+        ti = extract_track_info(target_track_basename)
         link_track_basename = track_basename_for_plex(ti)
+
+        target_track_path = os.path.join(album_target_subdir, target_track_basename)
         link_track_path = os.path.join(artist, album, link_track_basename)
 
         make_symlink(target_track_path, link_track_path)
@@ -156,6 +154,9 @@ def main() -> int:
         symlink_album(artist_target_dir, artist, album)
 
     return 0
+
+
+program: str = ""  # set in main()
 
 
 if __name__ == "__main__":
