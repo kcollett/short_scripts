@@ -15,6 +15,7 @@ import os.path
 import sys
 import re
 from collections import namedtuple
+from typing import List
 
 
 def check_directory(directory_path: str) -> (bool, str):
@@ -54,7 +55,7 @@ def track_basename_for_plex(ti: TrackInfo) -> str:
     return f"{number} - {ti.track_name}"
 
 
-TRACK_RE = re.compile(r"(?:([\d])-)?([\d]+)[\s-]+([\S]?.+)")
+TRACK_PATTERN = re.compile(r"(?:([\d])-)?([\d]+)[\s-]+([\S]?.+)")
 
 
 def extract_track_info(target_track_file_name) -> TrackInfo:
@@ -62,7 +63,7 @@ def extract_track_info(target_track_file_name) -> TrackInfo:
     Given file name of target track, return the corresponding
     track number and track name.
     """
-    m = TRACK_RE.match(target_track_file_name)
+    m = TRACK_PATTERN.match(target_track_file_name)
     disk_match = m.group(1)
     disk_number = int(disk_match) if disk_match is not None else 0
     track_number = int(m.group(2))
@@ -75,13 +76,54 @@ def extract_track_info(target_track_file_name) -> TrackInfo:
     return TrackInfo(disk_number, track_number, track_name)
 
 
-def list_entries(directory: str):
+MUSIC_FILE_PATTERN = re.compile(r"[^.]+(\.m4a|\.mp3)")
+DS_STORE_PATTERN = re.compile(r"\.DS_Store")
+
+
+def list_entries(
+    directory: str,
+    include_pattern: re.Pattern = None,
+    exclude_pattern: re.Pattern = None,
+    verbose: bool = False,
+):
     """
     Given a path to a directory, return a sorted list of entries
-    (files, directories, etc.) within that directory.
+    (files, directories, etc.) within that directory. If a
+    regular expression is provided, them only return matching
+    entries.
     """
-    filtered_files = [file for file in os.listdir(directory) if file != ".DS_Store"]
-    return sorted(filtered_files)
+    # include_pattern: re.Pattern = keywords['include']
+    # exclude_pattern: re.Pattern = keywords['exclude']
+    # verbose: bool = keywords['verbose']
+    logging.debug("inc=%s", include_pattern)
+    logging.debug("exc=%s", exclude_pattern)
+    logging.debug("verb=%s", verbose)
+
+    filtered_entries: List[str] = []
+    for entry in os.listdir(directory):
+        logging.debug("entry='%s'", entry)
+
+        if exclude_pattern is not None and exclude_pattern.match(entry):
+            if verbose:
+                print(
+                    f"{program}: skipping entry matching exclude pattern "
+                    + f"{exclude_pattern}: {entry}",
+                    file=sys.stderr,
+                )
+            continue
+
+        if include_pattern is not None and not include_pattern.match(entry):
+            if verbose:
+                print(
+                    f"{program}: skipping entry not matching include pattern "
+                    + f"{include_pattern}: {entry}",
+                    file=sys.stderr,
+                )
+            continue
+
+        filtered_entries.append(entry)
+
+    return sorted(filtered_entries)
 
 
 def make_symlink(target_path, link_path: str) -> None:
@@ -107,7 +149,9 @@ def symlink_album(target_dir, artist, album: str) -> None:
 
     album_target_subdir = os.path.join(target_dir, album)
 
-    for target_track_basename in list_entries(album_target_subdir):
+    for target_track_basename in list_entries(
+        album_target_subdir, include_pattern=MUSIC_FILE_PATTERN, verbose=True
+    ):
         ti = extract_track_info(target_track_basename)
         link_track_basename = track_basename_for_plex(ti)
 
@@ -121,7 +165,7 @@ def main() -> int:
     """
     Main for this script.
     """
-    logging.debug("TRACK_RE=%s", TRACK_RE)
+    logging.debug("TRACK_RE=%s", TRACK_PATTERN)
 
     if len(sys.argv) != 2:
         print(
@@ -150,7 +194,7 @@ def main() -> int:
         )
         return 1
 
-    for album in list_entries(artist_target_dir):
+    for album in list_entries(artist_target_dir, exclude_pattern=DS_STORE_PATTERN):
         symlink_album(artist_target_dir, artist, album)
 
     return 0
