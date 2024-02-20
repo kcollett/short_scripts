@@ -33,35 +33,32 @@ def check_directory(directory_path: str) -> (bool, str):
     return True, ""
 
 
-def list_entries(
-    path: str,
-    include_regex: str = None,
-    exclude_regex: str = None,
-):
+def list_entries(path: str, include_re: str = None, exclude_re: str = None):
     """
     Given a path to a directory, return a sorted list of entries
     (files, directories, etc.) within that directory. The returned
-    entries can be constrained by include_regex and exclude_regex.
+    entries can be constrained by regular expressions specified by
+    include_re and exclude_re.
     :param path: Path to the directory whose entries should be listed.
-    :param include_regex: If provided, only return entries that match (and do not match exclude_regex).
-    :param exclude_regex: If provided, exclude any entries that match.
+    :param include_re: If provided, only return entries that match (and do not match exclude_re).
+    :param exclude_re: If provided, exclude any entries that match.
     :return: A sorted list of entries within the specified directory.
     """
     # NB: Not accepting compiled patterns because chances are
     #     that is a premature optimization. If this becomes an
     #     issue, we can start caching patterns here.
     #     See https://stackoverflow.com/questions/47268595/when-to-use-re-compile
-    logging.debug("inc=%s", include_regex)
-    logging.debug("exc=%s", exclude_regex)
+    logging.debug("inc=%s", include_re)
+    logging.debug("exc=%s", exclude_re)
 
     entries: List[str] = []
     excluded: List[str] = []
     for entry in os.listdir(path):
         logging.debug("entry='%s'", entry)
-        if exclude_regex is not None and re.match(exclude_regex, entry):
+        if exclude_re is not None and re.match(exclude_re, entry):
             excluded.append(entry)
             continue
-        if include_regex is not None and not re.match(include_regex, entry):
+        if include_re is not None and not re.match(include_re, entry):
             excluded.append(entry)
             continue
         entries.append(entry)
@@ -136,7 +133,7 @@ def symlink_album(target_dir, artist, album: str) -> None:
     album_target_subdir = os.path.join(target_dir, album)
 
     target_track_basenames, excluded_entries = list_entries(
-        album_target_subdir, include_regex=r".+(\.m4a|\.mp3)"
+        album_target_subdir, include_re=r".+(\.m4a|\.mp3)"
     )
     for target_track_basename in target_track_basenames:
         ti = extract_track_info(target_track_basename)
@@ -187,7 +184,7 @@ def main() -> int:
         )
         return 1
 
-    album_subdirs, _ = list_entries(artist_target_dir, exclude_regex=r"\.DS_Store")
+    album_subdirs, _ = list_entries(artist_target_dir, exclude_re=r"\.DS_Store")
     for album in album_subdirs:
         symlink_album(artist_target_dir, artist, album)
 
