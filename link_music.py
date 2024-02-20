@@ -33,6 +33,42 @@ def check_directory(directory_path: str) -> (bool, str):
     return True, ""
 
 
+def list_entries(
+    path: str,
+    include_regex: str = None,
+    exclude_regex: str = None,
+):
+    """
+    Given a path to a directory, return a sorted list of entries
+    (files, directories, etc.) within that directory. The returned
+    entries can be constrained by include_regex and exclude_regex.
+    :param path: Path to the directory whose entries should be listed.
+    :param include_regex: If provided, only return entries that match (and do not match exclude_regex).
+    :param exclude_regex: If provided, exclude any entries that match.
+    :return: A sorted list of entries within the specified directory.
+    """
+    # NB: Not accepting compiled patterns because chances are
+    #     that is a premature optimization. If this becomes an
+    #     issue, we can start caching patterns here.
+    #     See https://stackoverflow.com/questions/47268595/when-to-use-re-compile
+    logging.debug("inc=%s", include_regex)
+    logging.debug("exc=%s", exclude_regex)
+
+    entries: List[str] = []
+    excluded: List[str] = []
+    for entry in os.listdir(path):
+        logging.debug("entry='%s'", entry)
+        if exclude_regex is not None and re.match(exclude_regex, entry):
+            excluded.append(entry)
+            continue
+        if include_regex is not None and not re.match(include_regex, entry):
+            excluded.append(entry)
+            continue
+        entries.append(entry)
+
+    return sorted(entries), excluded
+
+
 # A bit convoluted so that I can define a docstring for the namedtuple.
 # https://stackoverflow.com/questions/1606436/adding-docstrings-to-namedtuples
 TrackInfoNT = namedtuple("TrackInfo", "disc_number, track_number, track_name")
@@ -76,39 +112,6 @@ def extract_track_info(target_track_file_name) -> TrackInfo:
     return TrackInfo(disk_number, track_number, track_name)
 
 
-MUSIC_FILE_PATTERN = re.compile(r".+(\.m4a|\.mp3)")
-DS_STORE_PATTERN = re.compile(r"\.DS_Store")
-
-
-def list_entries(
-    directory: str,
-    include_pattern: re.Pattern = None,
-    exclude_pattern: re.Pattern = None,
-):
-    """
-    Given a path to a directory, return a sorted list of entries
-    (files, directories, etc.) within that directory. If a
-    regular expression is provided, them only return matching
-    entries.
-    """
-    logging.debug("inc=%s", include_pattern)
-    logging.debug("exc=%s", exclude_pattern)
-
-    entries: List[str] = []
-    excluded: List[str] = []
-    for entry in os.listdir(directory):
-        logging.debug("entry='%s'", entry)
-        if exclude_pattern is not None and exclude_pattern.match(entry):
-            excluded.append(entry)
-            continue
-        if include_pattern is not None and not include_pattern.match(entry):
-            excluded.append(entry)
-            continue
-        entries.append(entry)
-
-    return sorted(entries), excluded
-
-
 def make_symlink(target_path, link_path: str) -> None:
     """
     Given the path to a symbolic link target, and a path specifying
@@ -133,7 +136,7 @@ def symlink_album(target_dir, artist, album: str) -> None:
     album_target_subdir = os.path.join(target_dir, album)
 
     target_track_basenames, excluded_entries = list_entries(
-        album_target_subdir, include_pattern=MUSIC_FILE_PATTERN
+        album_target_subdir, include_regex=r".+(\.m4a|\.mp3)"
     )
     for target_track_basename in target_track_basenames:
         ti = extract_track_info(target_track_basename)
@@ -146,7 +149,7 @@ def symlink_album(target_dir, artist, album: str) -> None:
     # let user know what files we skipped
     for excluded_entry in excluded_entries:
         print(
-            f"{program}: skipping unmatched file {excluded_entry}",
+            f"{program}: skipped unmatched file '{excluded_entry}'",
             file=sys.stderr,
         )
 
@@ -184,7 +187,7 @@ def main() -> int:
         )
         return 1
 
-    album_subdirs, _ = list_entries(artist_target_dir, exclude_pattern=DS_STORE_PATTERN)
+    album_subdirs, _ = list_entries(artist_target_dir, exclude_regex=r"\.DS_Store")
     for album in album_subdirs:
         symlink_album(artist_target_dir, artist, album)
 
