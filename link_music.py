@@ -49,10 +49,10 @@ def track_basename_for_plex(ti: TrackInfo) -> str:
     Given track information, return a track file name approprate for Plex.
     https://support.plex.tv/articles/200265296-adding-music-media-from-folders/
     """
-    number = f"{ti.track_number:02}"
+    track_id = f"{ti.track_number:02}"
     if ti.disc_number > 0:  # prepend disc number if defined
-        number = f"{ti.disc_number}{number}"
-    return f"{number} - {ti.track_name}"
+        track_id = f"{ti.disc_number}{track_id}"
+    return f"{track_id} - {ti.track_name}"
 
 
 TRACK_PATTERN = re.compile(r"(?:([\d])-)?([\d]+)[\s-]+([\S]?.+)")
