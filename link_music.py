@@ -76,7 +76,7 @@ def extract_track_info(target_track_file_name) -> TrackInfo:
     return TrackInfo(disk_number, track_number, track_name)
 
 
-MUSIC_FILE_PATTERN = re.compile(r"[^.]+(\.m4a|\.mp3)")
+MUSIC_FILE_PATTERN = re.compile(r".+(\.m4a|\.mp3)")
 DS_STORE_PATTERN = re.compile(r"\.DS_Store")
 
 
