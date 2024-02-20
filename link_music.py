@@ -145,10 +145,7 @@ def symlink_album(target_dir, artist, album: str) -> None:
         make_symlink(target_track_path, link_track_path)
     # let user know what files we skipped
     for excluded_entry in excluded_entries:
-        print(
-            f"{program}: skipped unmatched file '{excluded_entry}'",
-            file=sys.stderr,
-        )
+        print_warning(f"skipped unmatched file '{excluded_entry}'")
 
 
 def main() -> int:
@@ -158,10 +155,7 @@ def main() -> int:
     logging.debug("TRACK_RE=%s", TRACK_PATTERN)
 
     if len(sys.argv) != 2:
-        print(
-            f"{program}: usage: {program} <artist_directory>",
-            file=sys.stderr,
-        )
+        print_warning(f"usage: {program} <artist_directory>")
         return 1
 
     artist_target_dir = os.path.abspath(os.path.expanduser(sys.argv[1]))
@@ -169,7 +163,7 @@ def main() -> int:
 
     valid, error_message = check_directory(artist_target_dir)
     if not valid:
-        print(f"{program}: {error_message}", file=sys.stderr)
+        print_warning(error_message)
         return 1
 
     artist = os.path.basename(artist_target_dir)
@@ -177,11 +171,7 @@ def main() -> int:
     try:
         os.makedirs(artist, mode=0o755, exist_ok=False)
     except FileExistsError:
-        print(
-            f"{program}: {artist}: "
-            + "file or directory already exists as subdirectory of current directory",
-            file=sys.stderr,
-        )
+        print_warning("file or directory already exists")
         return 1
 
     album_subdirs, _ = list_entries(artist_target_dir, exclude_re=r"\.DS_Store")
@@ -191,7 +181,15 @@ def main() -> int:
     return 0
 
 
-program: str = ""  # set in main()
+program: str = ""  # set below
+
+
+def print_warning(message: str) -> None:
+    """
+    Print the specifed message to standard error, prefixed with
+    the program name.
+    """
+    print(f"{program}: {message}'", file=sys.stderr)
 
 
 if __name__ == "__main__":
