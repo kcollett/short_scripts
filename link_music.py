@@ -84,7 +84,6 @@ def list_entries(
     directory: str,
     include_pattern: re.Pattern = None,
     exclude_pattern: re.Pattern = None,
-    verbose: bool = False,
 ):
     """
     Given a path to a directory, return a sorted list of entries
@@ -92,38 +91,22 @@ def list_entries(
     regular expression is provided, them only return matching
     entries.
     """
-    # include_pattern: re.Pattern = keywords['include']
-    # exclude_pattern: re.Pattern = keywords['exclude']
-    # verbose: bool = keywords['verbose']
     logging.debug("inc=%s", include_pattern)
     logging.debug("exc=%s", exclude_pattern)
-    logging.debug("verb=%s", verbose)
 
-    filtered_entries: List[str] = []
+    entries: List[str] = []
+    excluded: List[str] = []
     for entry in os.listdir(directory):
         logging.debug("entry='%s'", entry)
-
         if exclude_pattern is not None and exclude_pattern.match(entry):
-            if verbose:
-                print(
-                    f"{program}: skipping entry matching exclude pattern "
-                    + f"{exclude_pattern}: {entry}",
-                    file=sys.stderr,
-                )
+            excluded.append(entry)
             continue
-
         if include_pattern is not None and not include_pattern.match(entry):
-            if verbose:
-                print(
-                    f"{program}: skipping entry not matching include pattern "
-                    + f"{include_pattern}: {entry}",
-                    file=sys.stderr,
-                )
+            excluded.append(entry)
             continue
+        entries.append(entry)
 
-        filtered_entries.append(entry)
-
-    return sorted(filtered_entries)
+    return sorted(entries), excluded
 
 
 def make_symlink(target_path, link_path: str) -> None:
@@ -149,9 +132,10 @@ def symlink_album(target_dir, artist, album: str) -> None:
 
     album_target_subdir = os.path.join(target_dir, album)
 
-    for target_track_basename in list_entries(
-        album_target_subdir, include_pattern=MUSIC_FILE_PATTERN, verbose=True
-    ):
+    target_track_basenames, excluded_entries = list_entries(
+        album_target_subdir, include_pattern=MUSIC_FILE_PATTERN
+    )
+    for target_track_basename in target_track_basenames:
         ti = extract_track_info(target_track_basename)
         link_track_basename = track_basename_for_plex(ti)
 
@@ -159,6 +143,12 @@ def symlink_album(target_dir, artist, album: str) -> None:
         link_track_path = os.path.join(artist, album, link_track_basename)
 
         make_symlink(target_track_path, link_track_path)
+    # let user know what files we skipped
+    for excluded_entry in excluded_entries:
+        print(
+            f"{program}: skipping unmatched file {excluded_entry}",
+            file=sys.stderr,
+        )
 
 
 def main() -> int:
@@ -194,7 +184,8 @@ def main() -> int:
         )
         return 1
 
-    for album in list_entries(artist_target_dir, exclude_pattern=DS_STORE_PATTERN):
+    album_subdirs, _ = list_entries(artist_target_dir, exclude_pattern=DS_STORE_PATTERN)
+    for album in album_subdirs:
         symlink_album(artist_target_dir, artist, album)
 
     return 0
@@ -204,13 +195,13 @@ program: str = ""  # set in main()
 
 
 if __name__ == "__main__":
+    program = sys.argv[0].rsplit("/", maxsplit=1)[-1]
+    logging.debug("program=%s", program)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
-
-    program = sys.argv[0].rsplit("/", maxsplit=1)[-1]
-    logging.debug("program=%s", program)
 
     sys.exit(main())
