@@ -148,9 +148,6 @@ def main() -> int:
     """
     Main for this script.
     """
-    global program
-    program = sys.argv[0].rsplit("/", maxsplit=1)[-1]
-
     if len(sys.argv) != 3:
         print(
             f"{program}: usage: {program} <source_directory> <target_directory>",
@@ -183,4 +180,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    program = sys.argv[0].rsplit("/", maxsplit=1)[-1]
     sys.exit(main())
