@@ -1,10 +1,10 @@
-#! /usr/local/bin/python3
+#! /usr/local/bin/python3.9
 #
 #  -*- mode: python; -*-
 #
 import datetime
 import sys
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -38,7 +38,7 @@ class UrlRootBuilder(RootBuilder):
         return self.url
 
     def getRoot(self) -> ET.Element:
-        page = requests.get(self.url)
+        page = requests.get(self.url, timeout=60)
         root = ET.fromstring(page.content)
         return root
 
@@ -68,7 +68,10 @@ TREASURY_XML_PREFIXES: set[str] = set(
     {f"{{{value}}}" for value in TREASURY_XML_NS.values()}
 )
 
-TREASURY_RATE_XML_URL = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
+TREASURY_RATE_XML_URL = (
+    "https://home.treasury.gov/"
+    + "resource-center/data-chart-center/interest-rates/pages/xml"
+)
 DATA_NAME = "data"
 NOMINAL_DATA_VALUE = "daily_treasury_yield_curve"
 REAL_DATA_VALUE = "daily_treasury_real_yield_curve"
