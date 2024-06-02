@@ -260,7 +260,10 @@ def list_guesses(
             if letter not in excluded_letters
         ]
     else:
-        guesses = [letter.join([front_part, back_part]) for letter in included_letters]
+        guesses = [
+            letter.join([front_part, back_part])
+            for letter in char_range("A", "Z")
+            if letter in included_letters]
 
     return guesses
 
