@@ -78,16 +78,16 @@ def parse_args(argv: list[str]) -> CommandArgs:
     """
     parser = argparse.ArgumentParser(
         description=f"""\
-            When playing Wordle, it is useful to write out lists of candidate words. This can be quite laborious,
-            and can create a significant hindrance to those with diminished dexterity. %(prog)s is intended to
-            alleviate this burden by listing out those candidate guesses for you.
-            You specify the pattern for the candidate guesses using a template where a '{CHANGE_CHAR}' indicates
-            the letter to be changed to generate the candidate guesses. The program will iterate through
-            the alphabet, substituting the '{CHANGE_CHAR}' with each letter to generate a guess.
-            You can specify a list of letters to exclude when generating the candidate guesses; typically,
-            you would do this for the letters which Wordle has indicated aren't in the answer.
-            Alternatively, instead of iterating through the alphabet, you can specify the set of letters
-            to include when making guesses.
+            When playing Wordle, it is useful to write out lists of candidate words. This can be
+            quite laborious, and can create a significant hindrance to those with diminished
+            dexterity. %(prog)s is intended to alleviate this burden by listing out those candidate
+            guesses for you. You specify the pattern for the candidate guesses using a template
+            where a '{CHANGE_CHAR}' indicates the letter to be changed to generate the candidate
+            guesses. The program will iterate through the alphabet, substituting the '{CHANGE_CHAR}'
+            with each letter to generate a guess. You can specify a list of letters to exclude when
+            generating the candidate guesses; typically, you would do this for the letters which
+            Wordle has indicated aren't in the answer. Alternatively, instead of iterating through
+            the alphabet, you can specify the set of letters to include when making guesses.
             """,
         epilog=f"""\
             For example: %(prog)s {EXCLUDE_OPT} risengycuk {CHANGE_CHAR}a{BLANK_CHAR}am""",
@@ -263,7 +263,8 @@ def list_guesses(
         guesses = [
             letter.join([front_part, back_part])
             for letter in char_range("A", "Z")
-            if letter in included_letters]
+            if letter in included_letters
+        ]
 
     return guesses
 
