@@ -67,11 +67,10 @@ def shorten_info_string(info: str, max_len: int) -> str:
     if info_len < CHOP_MARKER_LEN + 3:
         return info
 
-    prefix_len = (info_len // 2) - 2
-    suffix_len = info_len - (prefix_len + CHOP_MARKER_LEN)
+    prefix_end = (max_len // 2) - 1
 
-    prefix = info[: prefix_len + 1]
-    suffix = info[info_len - suffix_len + 1 :]
+    prefix = info[:prefix_end]
+    suffix = info[-(max_len - (len(prefix) + CHOP_MARKER_LEN)) :]
 
     return prefix + CHOP_MARKER + suffix
 
@@ -179,7 +178,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
