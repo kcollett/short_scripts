@@ -71,7 +71,7 @@ class CommandArgs:
     num_guesses_per_line: int
 
 
-def parse_args(argv: list[str]) -> CommandArgs:
+def parse_args(argv: list[str]) -> CommandArgs | None:
     """
     Given command-line arguments, return an 'CommandArgs' object.
     'None' is returned if argument processing was not successful.
